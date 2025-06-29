@@ -3,7 +3,7 @@
 This project provides an advanced football (soccer) player tracking system using spatial-temporal constraints, appearance features, and Kalman filtering for robust multi-player tracking in broadcast videos.
 
 ## Features
-- **YOLO-based player detection** (supports custom and COCO models)
+- **YOLOv11 model is been provided by Liat.ai**
 - **Spatial-temporal tracking** with:
   - Kalman filter for smooth motion prediction
   - Physical movement constraints (players can't teleport)
@@ -15,7 +15,7 @@ This project provides an advanced football (soccer) player tracking system using
 - **Automatic ID management** (reuse, retire, and assign IDs)
 
 ## Requirements
-- Python 3.8+
+- Python 3.12+
 - [Ultralytics YOLO](https://github.com/ultralytics/ultralytics) (`pip install ultralytics`)
 - OpenCV (`pip install opencv-python`)
 - NumPy (`pip install numpy`)
