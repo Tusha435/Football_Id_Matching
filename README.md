@@ -1,81 +1,220 @@
-# Football Player Spatial-Temporal Tracking
+# Advanced Player Re-Identification Tracking System
 
-This project provides an advanced football (soccer) player tracking system using spatial-temporal constraints, appearance features, and Kalman filtering for robust multi-player tracking in broadcast videos.
+## Overview
 
-## Features
-- **YOLOv11 model is been provided by Liat.ai**
-- **Spatial-temporal tracking** with:
-  - Kalman filter for smooth motion prediction
-  - Physical movement constraints (players can't teleport)
-  - Occlusion detection and handling
-  - Appearance feature matching (color histograms)
-  - Track confidence management and ID stability
-  - Non-maximum suppression (NMS) for overlapping detections
-- **Trajectory and confidence visualization**
-- **Automatic ID management** (reuse, retire, and assign IDs)
+This project implements a sophisticated player tracking system for football/soccer videos using spatial-temporal constraints, Kalman filtering, and appearance-based matching. The system is designed to maintain consistent player IDs throughout the video, even during occlusions and rapid movements.
 
-## Requirements
-- Python 3.12+
-- [Ultralytics YOLO](https://github.com/ultralytics/ultralytics) (`pip install ultralytics`)
-- OpenCV (`pip install opencv-python`)
-- NumPy (`pip install numpy`)
-- SciPy (`pip install scipy`)
-- scikit-learn (`pip install scikit-learn`)
-- filterpy (`pip install filterpy`)
+## Key Features
+
+- **Spatial-Temporal Constraints**: Players can't teleport - movement is physically limited
+- **Kalman Filter**: Smooth motion prediction and tracking
+- **Occlusion Detection**: Handles overlapping players intelligently
+- **Track Confidence Management**: Adaptive tracking based on detection quality
+- **Appearance Matching**: HSV color histogram analysis for jersey identification
+- **Hungarian Algorithm**: Optimal assignment between detections and tracks
+
+## Dependencies
+
+```bash
+# Core dependencies
+opencv-python==4.8.1.78
+numpy==1.24.3
+scipy==1.10.1
+scikit-learn==1.3.0
+filterpy==1.4.5
+ultralytics==8.0.200
+
+# Additional requirements
+matplotlib==3.7.1  # For visualization (optional)
+pandas==2.0.3      # For data analysis (optional)
+```
+
+## Installation
+
+1. **Clone the repository** (or copy the code files)
+   ```bash
+   mkdir player-tracking
+   cd player-tracking
+   ```
+
+2. **Create a virtual environment**
+   ```bash
+   python -m venv venv
+   
+   # On Windows
+   venv\Scripts\activate
+   
+   # On Linux/Mac
+   source venv/bin/activate
+   ```
+
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Download YOLO model**
+   - Place your `best2.pt` YOLO model file in the project directory
+   - This should be a YOLO model trained on football player detection with classes:
+     - Class 1: Player
+     - Class 2: Goalkeeper
 
 ## Usage
 
-1. **Prepare your video and YOLO model:**
-   - Place your football video (e.g., `15sec_input_720p.mp4`) in the project directory.
-   - Place your YOLO model weights (e.g., `best2.pt`) in the project directory.
+### Basic Usage
 
-2. **Run the tracker:**
+```python
+from Advance_Re_ID import process_spatial_temporal_tracking
+
+# Process a video
+video_path = "your_football_video.mp4"
+output_path = "tracked_output.mp4"
+
+process_spatial_temporal_tracking(video_path, output_path)
+```
+
+### Advanced Usage
+
+```python
+from Advance_Re_ID import SpatialTemporalTracker
+import cv2
+
+# Initialize tracker with custom parameters
+tracker = SpatialTemporalTracker()
+tracker.max_movement_per_frame = 40  # Adjust for different video speeds
+tracker.max_disappeared = 20  # Frames before removing lost track
+
+# Process frame by frame
+cap = cv2.VideoCapture("input_video.mp4")
+frame_count = 0
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+    
+    frame_count += 1
+    
+    # Detect players
+    detections = tracker.detect_players(frame)
+    
+    # Update tracking
+    results = tracker.update(detections, frame, frame_count)
+    
+    # Process results
+    for player_id, data in results.items():
+        print(f"Player {player_id}: {data['centroid']}")
+
+cap.release()
+```
+
+## Configuration Parameters
+
+### Core Parameters
+- `max_disappeared`: Maximum frames a player can be missing (default: 15)
+- `max_movement_per_frame`: Maximum pixel movement allowed per frame (default: 30)
+- `occlusion_iou_threshold`: IoU threshold for occlusion detection (default: 0.3)
+- `min_track_confidence`: Minimum confidence to maintain track (default: 0.3)
+- `spatial_gate_threshold`: Maximum distance for valid assignment (default: 50)
+
+### Kalman Filter Parameters
+- State vector: [x, y, vx, vy] (position and velocity)
+- Measurement noise (R): 10 * I₂
+- Process noise (Q): 0.1 * I₄ (with reduced velocity noise)
+
+### Appearance Features
+- Color space: HSV
+- Histogram bins: 8 for Hue, 8 for Saturation
+- Feature vector size: 16 dimensions
+- Focus area: Upper half of bounding box (jersey region)
+
+## File Structure
+
+```
+player-tracking/
+├── Advance_Re_ID.py      # Main tracking implementation
+├── best2.pt              # YOLO model (user-provided)
+├── requirements.txt      # Python dependencies
+├── README.md             # This file
+├── tracking-report.md    # Technical report
+└── test_videos/          # Input videos (optional)
+    └── output/           # Tracked videos
+```
+
+## Running the Code
+
+1. **Prepare your video**
+   - Ensure video is in a supported format (mp4, avi, mov)
+   - Recommended resolution: 720p or 1080p
+   - Clear visibility of players
+
+2. **Run tracking**
    ```bash
    python Advance_Re_ID.py
    ```
-   By default, it will process `15sec_input_720p.mp4` and output `spatial_temporal_tracking.mp4`.
+   
+   Or modify the main section:
+   ```python
+   if __name__ == "__main__":
+       video_path = "your_video.mp4"
+       output_path = "tracked_video.mp4"
+       process_spatial_temporal_tracking(video_path, output_path)
+   ```
 
-3. **Output:**
-   - The output video will show tracked players with stable IDs, bounding boxes, and confidence labels.
-   - The console will print progress and statistics.
+3. **Monitor progress**
+   - Real-time visualization window shows tracking results
+   - Console displays progress every 30 frames
+   - Press 'q' to quit early
 
-## Tracking Approach
-- **Detection:** Uses YOLO to detect players in each frame.
-- **Assignment:** Matches detections to existing tracks using a cost function combining:
-  - Predicted position (Kalman filter)
-  - Appearance similarity (color histogram in HSV)
-  - Size consistency
-  - Track confidence
-- **Spatial-temporal constraints:**
-  - Limits on maximum movement per frame
-  - Occlusion detection using IoU
-  - Tracks are only created if detections are far enough from existing players
-- **Track management:**
-  - Tracks are retired if lost for too long or confidence drops
-  - IDs are reused efficiently
+## Output
 
-## Example Output
-- Each player is labeled with a unique, stable ID (e.g., `P1`, `P2`, ...)
-- Track confidence and occlusion status are displayed
-- Bounding boxes and predicted positions are visualized
+The system produces:
+- **Tracked video**: Players with consistent IDs, bounding boxes, and confidence scores
+- **Console output**: Frame-by-frame statistics and tracking metrics
+- **Visual indicators**:
+  - Player IDs (P1, P2, etc.)
+  - Goalkeeper IDs (GK1, GK2, etc.)
+  - Track confidence scores
+  - Occlusion markers [OCC]
+  - Color-coded boxes based on track strength
 
 ## Troubleshooting
-- **No players detected:**
-  - Check your YOLO model and class indices (default expects class 1 or 2 for players)
-  - Lower the detection confidence threshold if needed
-- **ID switches:**
-  - The tracker uses strict movement and appearance constraints, but extreme occlusions or similar uniforms may still cause switches
-- **Performance:**
-  - For large videos, consider reducing frame size or using a GPU
 
-## Customization
-- Adjust parameters in `SpatialTemporalTracker` for your scenario:
-  - `max_movement_per_frame`, `spatial_gate_threshold`, `min_track_confidence`, etc.
-- Replace the YOLO model with your own weights for better accuracy on your data
+### Common Issues
 
-## Citation
-If you use this code for research or production, please cite the Ultralytics YOLO repository and this project.
+1. **ImportError for ultralytics**
+   ```bash
+   pip install ultralytics --upgrade
+   ```
 
----
+2. **YOLO model not found**
+   - Ensure `best2.pt` is in the project directory
+   - Check model path in code
 
-**Enjoy robust football player tracking with spatial-temporal intelligence!**
+3. **Low FPS / Slow processing**
+   - Reduce video resolution
+   - Increase YOLO confidence threshold
+   - Decrease max number of tracks
+
+4. **Unstable tracking**
+   - Adjust `max_movement_per_frame` based on video FPS
+   - Tune `spatial_gate_threshold` for your use case
+   - Modify Kalman filter noise parameters
+
+## Performance Tips
+
+1. **GPU Acceleration**: Ensure CUDA is installed for YOLO inference
+2. **Batch Processing**: Process multiple frames together for efficiency
+3. **Resolution**: Balance between accuracy and speed (720p recommended)
+4. **Model Selection**: Use lighter YOLO variants for real-time processing
+
+## License
+
+This project is provided as-is for educational and research purposes.
+
+## Acknowledgments
+
+- YOLO for object detection
+- FilterPy for Kalman filtering implementation
+- OpenCV for video processing
+- SciPy for Hungarian algorithm
