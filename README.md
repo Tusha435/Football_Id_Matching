@@ -208,9 +208,8 @@ The system produces:
 3. **Resolution**: Balance between accuracy and speed (720p recommended)
 4. **Model Selection**: Use lighter YOLO variants for real-time processing
 
-## License
-
-This project is provided as-is for educational and research purposes.
+## Output MP4 Video 
+![](https://github.com/Tusha435/Football_Id_Matching/blob/main/Player_tracking.mp4)
 
 ## Acknowledgments
 
